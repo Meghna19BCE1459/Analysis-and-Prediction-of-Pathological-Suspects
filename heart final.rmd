@@ -1,0 +1,584 @@
+---
+title: "J Component"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## 19BCE1459 - Meghna Manoj Nair
+## 19BCE1182 - Gadiparthy Harika Sai
+* * *
+
+ 
+ 
+* * *
+
+## Dataset Used
+* * *
+
+slope (type: int) - the slope of the peak exercise ST segment, an electrocardiography read out indicating quality of blood flow to the heart 
+-- Value 1: upsloping
+-- Value 2: flat
+-- Value 3: downsloping
+
+thal (type: categorical) - results of thallium stress test measuring blood flow to the heart, with possible
+-- 1: normal
+-- 2: fixed defect
+-- 3: reversable defect
+
+trestbps (type: int) - resting blood pressure
+
+cp (type: int): chest pain type (4 values) 
+-- Value 0: typical angina 
+-- Value 1: atypical angina
+-- Value 2: non-anginal pain  
+-- Value 3: asymptomatic
+
+
+fbs (type: binary) - fasting blood sugar > 120 mg/dl
+
+restecg (type: int) - resting electrocardiographic results (values 0,1,2)
+
+oldpeak (type: float) - oldpeak = ST depression induced by exercise relative to rest, a measure of abnormality in electrocardiograms
+
+sex (type: binary) - 0: female, 1: male
+
+age (type: int) - age in years
+
+exang: exercise_induced_angina (type: binary) - exercise-induced chest pain (0: False, 1: True)
+
+chol (type: int) - serum cholestoral in mg/dl
+
+thalach (type: int) - maximum heart rate achieved
+
+ca (type: categorical) - number of major vessels (0-4) colored by flourosopy
+
+target (type: categorical) - diagnosis of heart disease (angiographic disease status)
+-- Value 0: < 50% diameter narrowing
+-- Value 1: > 50% diameter narrowing
+
+* * *
+
+
+
+## Loading the dataset
+```{r}
+library(kableExtra)
+library(rsample)
+library(recipes)
+library(parsnip)
+library(yardstick)
+library(viridisLite)
+library(GGally)
+rm(list=ls())
+library(tidyverse)
+heart <- read.csv("heart.csv")
+#View(heart)
+any(is.na(heart))
+str(heart)
+head(heart)
+tail(heart)
+summary(heart)
+```
+
+## Converting the values 0 and 1 in sex to female and male respectively
+```{r}
+heart <- heart%>%
+  mutate(sex=gsub("0","Female",sex))%>%
+  mutate(sex=gsub("1","Male",sex))
+head(heart$sex)
+```
+
+## Checking the count of males and females prone to heart disease
+```{r}
+library(dplyr)
+heart%>%
+  filter(target==1)%>%
+  group_by(sex)%>%
+  summarize(No.of_people_prone_to_heart_disease=sum(target))
+```
+* * *
+
+Inference: It can be observed from the above table that comparatively, men are more prone to heart diseases when compared to women from the given dataset.
+
+* * *
+
+## Average cholestrol level of the people prone to heart disease
+```{r}
+heart%>%
+  filter(target==1)%>%
+  summarize(Avg.cholestrol=mean(chol))
+```
+
+## Relation between chest pain type and target
+```{r}
+library(crosstable)
+source("http://pcwww.liv.ac.uk/~william/R/crosstab.r")
+crosstab(heart,row.vars= "cp",col.vars = "target")
+```
+* * *
+
+Inference: It can be observed from the above crosstable that for the given dataset, people with chest pain type 2 (i.e Non Anginal Pain) are more likely to be prone to a heart disease when compared to those people who have a chest pain of type 0 (i.e Typical Angina) who are not likely to be exposed to a heart disease. 
+
+* * *
+## Relation between Sex and Target
+```{r}
+crosstab(heart,row.vars = "sex",col.vars = "target")
+```
+* * *
+
+Inference: It can be observed from the above table that the number of females in our dataset are much lower when compared to the number of males. Within the sample of males, we can infer that more number of males are less like to be prone to a heart disease. However, within the female sample, we can observe that more females are likely to be a suspect of pathological disease. 
+
+* * *
+
+
+## Data Transformation
+```{r}
+
+data2 <- heart%>%
+  mutate(fbs=if_else(fbs==1,">120","<=120"),
+         exang=if_else(exang==1,"YES","NO"),
+         cp=if_else(cp==1,"ATYPICAL ANGINA",
+                    if_else(cp==2,"NON-ANGINAL PAIN",ifelse(cp==0,"TYPICAL ANGINA","ASYMPTOMATIC"))),
+         restecg=if_else(restecg==0,"NORMAL",
+                         if_else(restecg==1,"ABNORMALITY","PROBABLE OR DEFINITE")),
+         slope=as.factor(slope),
+         ca=as.factor(ca),
+         thal=as.factor(thal),
+         target=if_else(target==1,"YES","NO"))%>%
+         mutate_if(is.character,as.factor)%>%
+         rename(age=ï..age)%>%
+         dplyr::select(target,sex,fbs,exang,cp,restecg,slope,ca,thal,everything())
+         
+#View(data2)
+head(data2)
+```
+
+## Data Visualization
+```{r}
+
+library(ggplot2)
+ggplot(data2,aes(x=target,fill=target))+
+  geom_bar()+
+  xlab("Heart Disease")+
+  ylab("count")+
+  ggtitle("Presence and Absence of Heart Disease")+
+  scale_fill_discrete(name='Heart Disease',labels=c("No","Yes"))
+```
+* * *
+
+Inference: It can be observed from the above graph that from the given dataset, more people are prone towards having a pathological disease and fewer number of patients are likely to escape from the same.
+
+* * *
+
+######################################################33
+```{r}
+data2%>%
+  filter(sex=="Female")%>%
+  filter(target=="YES")%>%
+  group_by(age)%>%
+  count()%>%
+  ggplot()+
+  geom_col(aes(age,n),fill='maroon')+
+  ggtitle("Age Analysis for Females")+
+  xlab("Age")+
+  ylab("Count")
+```
+* * *
+
+Inference: It can be inferred that females within the age group of 40 to 60 are more prone to pathological diseases when compared to the rest of the age groups.
+
+* * *
+
+```{r}
+data2%>%
+  filter(target=="YES")%>%
+  group_by(cp)%>%
+  count()%>%
+  ggplot()+
+  geom_col(aes(cp,n),fill='blue')+
+  ggtitle("Chest Pain Analysis")+
+  xlab("Chest Pain Type")+
+  ylab("Count")
+```
+
+```{r}
+#count the frequency of the values of age
+data2%>%
+  filter(target=="YES")%>%
+  group_by(age)%>%
+  count()%>%
+  ggplot()+
+  geom_col(aes(age,n),fill='maroon')+
+  ggtitle("Age Analysis")+
+  xlab("Age")+
+  ylab("Count")
+
+
+```
+* * *
+
+Inference: From this visualization it can be observed that majority of the people who are prone to heart disease in the given data-set belong to the age group of 50 to 60.
+
+* * *
+## Compare BP across chest pain
+```{r}
+
+data2%>%
+  ggplot(aes(x=sex,y=trestbps))+
+  geom_boxplot(fill='purple')+
+  xlab('sex')+
+  ylab('BP')+
+  facet_grid(~cp)
+
+```
+
+* * *
+
+Inference: The above given facet_wrapped box plot gives the various central dispersion techniques for the four types of chest pains with regards to blood pressure for both males and females. For asymptomatic chest pain, females are likely to have a higher BP when compared to male and the same can be observed for atypical anginal chest pain also. However, in the non-anginal chest pain, males are likely to have a higher BP when compared to females. 
+
+* * *
+
+
+## Comparing cholestrol across chest pain
+```{r}
+data2%>%
+  ggplot(aes(x=sex,y=chol))+
+  geom_boxplot(fill='maroon')+
+  xlab('sex')+
+  ylab('Cholestrol')+
+  facet_grid(~cp)
+```
+* * *
+
+Inference: The above given facet_wrapped box plot gives the various central dispersion techniques for the four types of chest pains with regards to cholestrol for both males and females. For typical, atypical angina and non-anginal chest pain, females are likely to have a higher cholestrol level when compared to their male counterparts.
+
+* * *
+
+## Correlation Plot
+```{r}
+
+library(corrplot)
+corheart <- cor(data2[,10:14])
+corheart
+corrplot(corheart,method='square',type='upper')
+```
+
+* * *
+
+Inference: In the above correlation plot, a dark red would indicate a negative correlation and a dark blue would indicate a positive correlation. The darker the shade, strong the correlation and lighter the shade, weaker the correlation. It can be inferred from above that thalach (maximum heart rate achieved) is strongly dependent on the age in a negative fashion. Whereas, trestbps (resting blood pressure), chol (cholestrol) and oldpeak are positively correlated in a mediocre way. Another significant inference is that thalach (maximum heart rate achieved) is strongly dependent on oldpeak in a negative manner.
+
+* * *
+
+
+## Visualization of heart disease predictions
+
+```{r}
+library(dplyr)
+heartdata <- data2 %>%
+mutate_at(c("restecg", 
+                "fbs", 
+                "sex", 
+                "target", 
+                "exang",
+                "slope", 
+                "cp"), as_factor) %>%
+  select(age, 
+           trestbps, 
+           chol, 
+           thalach, 
+           oldpeak,
+           ca,
+           everything())
+
+heartdata %>%
+  glimpse()
+data3 <- heartdata%>%
+  select(sex,
+         cp,
+         fbs,
+         restecg,
+         exang,
+         slope,
+         ca,
+         thal,
+         target)%>%
+  mutate(sex = recode_factor(sex, `Female` = "female", 
+                                  `Male` = "male" ),
+         cp = recode_factor(cp, `1` = "ATYPICAL ANGINA",   
+                                `2` = "NON-ANGINAL PAIN",
+                                `3` = "ASYMPTOMATIC", 
+                                `0` = "TYPICAL ANGINA"),
+         fbs = recode_factor(fbs, `0` = "<= 120 mg/dl", 
+                                  `1` = "> 120 mg/dl"),
+         restecg = recode_factor(restecg, `0` = "NORMAL",
+                                          `1` = "ABNORMALITY",
+                                          `2` = "PROBABLE OR DEFINITE"),
+         exang = recode_factor(exang, `0` = "NO",
+                                      `1` = "YES"),
+         slope = recode_factor(slope, `0` = "up-sloaping",
+                                      `1` = "flat",
+                                      `2` = "down-sloaping"),
+         thal = recode_factor(thal, `0` = "normal",
+                                    `1` = "normal",
+                                    `2` = "fixed defect",
+                                    `3` = "reversible defect")) %>%
+  gather(key = "key", value = "value", -target)
+
+
+#Visualize with bar plot
+data3%>% 
+  ggplot(aes(value)) +
+    geom_bar(aes(x        = value, 
+                 fill     = target), 
+                 alpha    = .6,  
+                 position = "dodge",
+                 color    = "black",
+                 width    = .4
+             ) +
+    labs(x = "",
+         y = "",
+         title = "Scaled Effect of Categorical Variables") +
+    theme(
+         axis.text.y  = element_blank(),
+         axis.ticks.y = element_blank()) +
+    facet_wrap(~ key, scales = "free", nrow = 5) +
+    scale_fill_manual(
+         values = c("#fde725ff", "#20a486ff"),
+         name   = "Heart\nDisease",
+         labels = c("No HD", "Yes HD"))
+```
+
+```{r}
+data4 <- heartdata  %>%
+  select(age,
+         trestbps,
+         chol,
+         thalach,
+         oldpeak,
+         target) %>% 
+  gather(key   = "key", 
+         value = "value",
+         -target)
+#Visualize numeric variables as boxplots
+data4 %>% 
+  ggplot(aes(y = value)) +
+       geom_boxplot(aes(fill = target),
+                      alpha  = .6,
+                      fatten = .7) +
+        labs(x = "",
+             y = "",
+             title = "Boxplots for Numeric Variables") +
+      scale_fill_manual(
+            values = c("#fde725ff", "#20a486ff"),
+            name   = "Heart\nDisease",
+            labels = c("No HD", "Yes HD")) +
+      theme(
+         axis.text.x  = element_blank(),
+         axis.ticks.x = element_blank()) +
+      facet_wrap(~ key, 
+                 scales = "free", 
+                 ncol   = 2)
+
+```
+
+
+```{r}
+
+heartdata %>% ggcorr(high       = "#20a486ff",
+                                   low        = "#fde725ff",
+                                   label      = TRUE, 
+                                   hjust      = .75, 
+                                   size       = 3, 
+                                   label_size = 3,
+                                   nbreaks    = 5
+                                              ) +
+  labs(title = "Correlation Matrix",
+  subtitle = "Pearson Method Using Pairwise Obervations")
+```
+
+## Decision Tree with rpart library with regards to all variables
+
+
+```{r}
+data2$target <- factor(data2$target)
+set.seed(1234)
+pd <- sample(2,nrow(data2),replace=TRUE,prob=c(0.8,0.2)) #80% of the data is for training and 20% of the data is for testing
+train <- data2[pd==1,]
+validate <- data2[pd==2,]
+
+library(rpart)
+#str(train)
+head(na.omit(train))
+tree1 <- rpart(target~., train)
+library(rpart.plot)
+rpart.plot(tree1,extra=2)
+#prediction
+head(predict(tree1,validate))
+```
+
+* * *
+
+Inference: This decision tree has been created using party library and the root node here is cp (chest pain). If cp=Typical Angina, and ca (number of blood vessels) is 1,2,3 or 4, then the person isn't likely to have a heart disease but if ca=0 and if thal (results of thallium stress) is either 0 or 3, then the person won't have heart disease else the person will have a heart disease.Similarly the other nodes can be traced to classifiy the heart disease condition of the person.
+
+* * *
+## Decision Tree with rpart library with regards to thalach, oldpeak and chol
+
+
+```{r}
+data2$target <- factor(data2$target)
+set.seed(1234)
+pd <- sample(2,nrow(data2),replace=TRUE,prob=c(0.8,0.2)) #80% of the data is for training and 20% of the data is for testing
+train <- data2[pd==1,]
+validate <- data2[pd==2,]
+
+library(rpart)
+str(train)
+head(na.omit(train))
+tree1 <- rpart(target~thalach+oldpeak+chol, train)
+library(rpart.plot)
+rpart.plot(tree1,extra=2)
+#prediction
+head(predict(tree1,validate))
+```
+* * *
+
+Inference: The above decision tree is created using the rpart library and hence the decision tree is curated using the Classification And Regression Tree (CART) algorithm. As observable, since it uses the CART algorithm, it divides any given node into two possible splits (binary classification). The root node here is thalach (i.e. maximum heart rate) and if it is less than 147 and the oldpeak value >= 0.5, then the person is not likely to have a heart disease but if the oldpeak value < 0.5 and if cholestrol>=238, the person will not have heart disease. However if chol<238, they will have heart disease. 
+
+* * *
+
+## Confusion matrix for the validate data
+```{r}
+
+library(e1071)
+library(caTools)
+library(caret)
+
+x <- naiveBayes(target ~ ., data = train)
+
+nb_train_predict <- predict(x, validate[ , names(validate) != "target"])
+
+cfm <- confusionMatrix(nb_train_predict, validate$target)
+cfm
+```
+
+* * *
+
+Inference: The accuracy obtained is 0.8679 and the kappa value is 0.7378 indicating that the agreement of the classification from the decision tree and that from the actual classification are quite close. Similarly the sensitivity and specificity are extremely high indicating an efficient classification.
+
+* * *
+
+## Analyzing the Cardiotocographic dataset with further parameters and attributes
+* * *
+
+LB: Fatal Heart Rate (type:int) - beats per minute
+
+AC (type:float) - number of accelerations per second
+
+FM (type:float) - number of fetal movements per second
+
+UC (type:float) - number of uterine contraction per second
+
+DL (type:float) - number of light decelerations per second
+
+DS (type:categorical) - number of sever decelerations per second 
+
+DP (type:float) - number of prolonged decelerations per second
+
+ASTV (type:int) - % of time with abnormal short term variability
+
+MSTV (type:float) - mean value of short term variability
+
+ALTV (type:int) - % of time with abnormal long term variability
+
+MLTV (type:float) - mean value of long term variability
+
+Width (type:int) - width of FHR histogram
+
+Min (type:int) - minimum of FHR histogram
+
+Max (type:int) - maximum of FHR histogram
+
+Nmax (type:int) - number of histogram peaks
+
+Nzeroes (type:int) - number of histogram zeros
+
+Mode (type:int) - histogram mode
+
+Mean (type:int) - histogram mean
+
+Median (type:int) - histogram median
+
+Variance (type:int) - histogram variance
+
+Tendency (type:int) - histogram tendency
+
+NSP (type:categorical) - fetal state class code
+--Value 1: Normal
+--Value 2: Suspect
+--Value 3: Pathological
+
+
+* * * 
+```{r}
+data <- read.csv("Cardiotocographic.csv")
+#View(data)
+str(data)
+head(data)
+data$NSPF <- factor(data$NSP)
+
+```
+
+```{r}
+set.seed(1234)
+pd <- sample(2,nrow(data),replace=TRUE,prob=c(0.8,0.2))
+train <- data[pd==1,]
+validate <- data[pd==2,]
+#View(validate)
+```
+
+## Decision Tree with party
+```{r}
+library(party)
+tree <- ctree(NSPF~LB+AC+DP,data=train, controls=ctree_control(mincriterion=0.99,minsplit=500))
+tree
+plot(tree)
+```
+
+
+## Decision tree with rpart
+```{r}
+library(rpart)
+str(train)
+head(na.omit(train))
+tree1 <- rpart(NSPF~LB+AC+DP, train)
+library(rpart.plot)
+rpart.plot(tree1,extra=2)
+#prediction
+head(predict(tree1,validate))
+```
+
+* * *
+
+Inference: The decision tree is created using rpart library and the root node is AC. If AC>=0.00839, AND IF dp<0.0016, the person isn't likely to have a heart disease. However, if DP>0.0016, then thee person is definitely a suspect.
+
+* * *
+## Misclassifcation error for train data
+```{r}
+tab <- table(predict(tree),train$NSPF)
+print(tab)
+```
+
+## Misclassification error with validate data
+```{r}
+testPred <- predict(tree,newdata=validate)
+tab <- table(testPred,validate$NSPF)
+print(tab)
+```
+
+
+
+
+
+
