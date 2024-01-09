@@ -1,5 +1,5 @@
 Problem Statement: <br>
-To conduct heart disease data analysis and also build a classification and regression tree using cardiotocographic data and to classify patients as pathological and non-pathological suspects of heart diseases. 
+To conduct heart disease data analysis and to build a classification and regression tree using cardiotocographic data so as to classify patients as pathological and non-pathological suspects of heart diseases. 
 
 Abstract: <br>
 With the new and sedentary lifestyle which a large majority of the population across the world is being exposed to, there has been a significant increase in heart diseases like those of heart failure, pericardial diseases, heart stroke etc. In order to analyze and portray the severity of this issue, we have decided to conduct heart disease data analysis and also build a classification and regression tree using cardiotocographic data using essential parameters like fasting blood sugar, serum cholesterol, max heart rate, etc. 
